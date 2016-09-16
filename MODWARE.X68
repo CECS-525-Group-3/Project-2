@@ -1,4 +1,4 @@
-*        TSBUG2 - 68000 monitor - version of 05 January 2010 
+*        TSBUG2 - 68000 monitor - version of 05 January 201
 
 	 ORG      $0
          DC.L     STACK,RESET
@@ -332,19 +332,15 @@ LOAD2    BSR      GETCHAR           Records from the host must begin
          CMP.B    #'S',D0           with S1/S2 (data) or S9/S8 (term) 
          BNE.S    LOAD2             Repeat GETCHAR until char = "S" 
          BSR      GETCHAR           Get character after "S" 
-         CMP.B    #'9',D0           Test for the two terminators S9/S8 
-         BEQ.S    LOAD3             If S9 record then exit else test 
-         CMP.B    #'8',D0           for S8 terminator. Fall through to 
-         BNE.S    LOAD6             exit on S8 else continue search 
 LOAD3    EQU      *                 Exit point from LOAD 
          MOVE.L   (A7)+,CN_IVEC(A6) Clean up by restoring input device 
          MOVE.L   (A7)+,CN_OVEC(A6) and output device name 
          CLR.B    ECHO(A6)          Restore input character echo 
-         BTST   #0,D7             Test for input errors 
+         BTST     #0,D7             Test for input errors 
          BEQ.S    LOAD4             If no I/P error then look at checksum 
          LEA.L    ERMES1(PC),A4     Else point to error message 
          BSR      PSTRING           Print it 
-LOAD4    BTST   #3,D7             Test for checksum error 
+LOAD4    BTST     #3,D7             Test for checksum error 
          BEQ.S    LOAD5             If clear then exit 
          LEA.L    ERMES3(PC),A4     Else point to error message 
          BSR      PSTRING           Print it and return 
@@ -682,6 +678,7 @@ ERMES5   DC.B     'Breakpoint not active   ',0,0
 ERMES6   DC.B     'Uninitialized exception ',0,0 
 ERMES7   DC.B     ' Range error',0 
          END RESET 
+
 *~Font name~Courier New~
 *~Font size~10~
 *~Tab type~1~
