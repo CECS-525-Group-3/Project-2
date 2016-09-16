@@ -43,27 +43,27 @@ BUFFER   DS.B     256               256 bytes for I/O buffer
          ORG      $1000             Monitor Origin
 RESET:   EQU      *
          LEA.L    DATA,A6           A6 points to data area 
-	 MOVE.L	  A6,TSK_T+56(A6)   initialize A6 in the regster Frame
+	     MOVE.L	  A6,TSK_T+56(A6)   initialize A6 in the regster Frame
          CLR.L    UTAB(A6)          Reset pointer to user extension table 
          CLR.B    ECHO(A6)          Set automatic character echo 
          CLR.B    U_CASE(A6)        Clear case conversion flag (UC<-LC) 
          BSR.S    SETACIA           Setup ACIAs 
-	 BSR.L	  X_SET		    what change did i do here
+	     BSR.L	  X_SET		        what change did i do here
          BSR.L    SET_DCB           Setup DCB table in RAM
          BSR.S    NEWLINE
          LEA.L    BANNER(PC),A4    
          BSR.S    PSTRING
          BSR.S    NEWLINE           
-	 LEA.L	  MODIFY(PC),A4
+	     LEA.L	  MODIFY(PC),A4
          BSR.S    PSTRING
          BSR.S    NEWLINE
-	 LEA.L	  WHY(PC),A4
+	     LEA.L	  WHY(PC),A4
          BSR.S    PSTRING
          BSR.S    NEWLINE
-	 LEA.L	  WHERE(PC),A4
+	     LEA.L	  WHERE(PC),A4
          BSR.S    PSTRING
          BSR.S    NEWLINE
-	 LEA.L	  ADDRE(PC),A4
+	     LEA.L	  ADDRE(PC),A4
          BSR.S    PSTRING
          BSR.S    NEWLINE
          MOVE.L   #$3000,A0         A0 points to extension ROM 
@@ -678,6 +678,7 @@ ERMES5   DC.B     'Breakpoint not active   ',0,0
 ERMES6   DC.B     'Uninitialized exception ',0,0 
 ERMES7   DC.B     ' Range error',0 
          END RESET 
+
 
 *~Font name~Courier New~
 *~Font size~10~
