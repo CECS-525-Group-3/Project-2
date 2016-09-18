@@ -17,6 +17,8 @@ ACIA_2   EQU      ACIA_1            Auxilary ACIA control
 X_BASE   EQU      $4000             Start of exception vector table 
 TRAP_14  EQU      $4E4E             Code for TRAP #14 
 MAXCHR   EQU      64                Length of input line buffer  
+R_BEGIN  EQU      $4000             Address of beginning of RAM
+R_END    EQU      $4FFF             Address of the end of RAM
 * 
 DATA     EQU      $4800             Data origin 
 LNBUFF   DS.B     MAXCHR            Input line buffer
@@ -387,9 +389,29 @@ PSPACE   MOVE.B   D0,-(A7)          Print a single space
          BSR      PUTCHAR 
          MOVE.B   (A7)+,D0 
          RTS 
+
+* 
+************************************************************************* 
+* 
+*  HELP  Display the help text from the DC table. The help text
+*        shows a list of all commands with a description and
+*        their syntax
+*     
+HELP     LEA.L    COMMANDS(PC),A4  Point to the address of the command list
+         BSR      PSTRING          Go to the PSTRING subroutine to print text
+         RTS                       Return back execution
          
-HELP     LEA.L    COMMANDS(PC),A4
-         BSR      PSTRING
+         
+* 
+************************************************************************* 
+* 
+*  TV    Tests if all RAM is good on the board. Loads a specific pattern 
+*        of values into RAM, and then goes back over RAM to make sure the 
+*        pattern matches what is in the register. Bad memory locations are 
+*        reported.
+*             
+TV       LEA.L R_BEGIN,A1
+         LEA.L R_END,A2
          RTS
          
 LOGIN    LEA.L    UPROMPT,A4        Print User prompt
@@ -1223,27 +1245,27 @@ X_UN    EQU     *                 Uninitialized exception vector routine
 *         a string length + number of characters to match + the string 
 *         plus the address of the command relative to COMTAB 
 * 
-COMTAB   DC.B     4,4              JUMP <address> causes execution to 
-         DC.B     'JUMP'           begin at <address> 
-         DC.L     JUMP-COMTAB                                           
-         DC.B     8,3              MEMORY <address> examines contents of 
-         DC.B     'MEMORY  '       <address> and allows them to be changed 
-         DC.L     MEMORY-COMTAB 
-         DC.B     4,4              LOAD <string> loads S1/S2 records 
-         DC.B     'LOAD'           from the host. <string> is sent to host 
-         DC.L     LOAD-COMTAB 
-         DC.B     4,2              DUMP <string> sends S1 records to the 
-         DC.B     'DUMP'           host and is preceeded by <string>. 
-         DC.L     DUMP-COMTAB 
-         DC.B     4,3              TRAN enters the transparant mode 
-         DC.B     'TRAN'           and is exited by ESC,E. 
-         DC.L     TM-COMTAB 
-         DC.B     4,2              NOBR <address> removes the breakpoint 
-         DC.B     'NOBR'           at <address> from the BP table. If 
-         DC.L     NOBR-COMTAB      no address is given all BPs are removed. 
-         DC.B     4,2              DISP displays the contents of the 
-         DC.B     'DISP'           pseudo registers in TSK_T. 
-         DC.L     EX_DIS-COMTAB 
+COMTAB   DC.B    4,4              JUMP <address> causes execution to 
+         DC.B    'JUMP'           begin at <address> 
+         DC.L    JUMP-COMTAB                                           
+         DC.B    8,3              MEMORY <address> examines contents of 
+         DC.B    'MEMORY  '       <address> and allows them to be changed 
+         DC.L    MEMORY-COMTAB 
+         DC.B    4,4              LOAD <string> loads S1/S2 records 
+         DC.B    'LOAD'           from the host. <string> is sent to host 
+         DC.L    LOAD-COMTAB 
+         DC.B    4,2              DUMP <string> sends S1 records to the 
+         DC.B    'DUMP'           host and is preceeded by <string>. 
+         DC.L    DUMP-COMTAB 
+         DC.B    4,3              TRAN enters the transparant mode 
+         DC.B    'TRAN'           and is exited by ESC,E. 
+         DC.L    TM-COMTAB 
+         DC.B    4,2              NOBR <address> removes the breakpoint 
+         DC.B    'NOBR'           at <address> from the BP table. If 
+         DC.L    NOBR-COMTAB      no address is given all BPs are removed. 
+         DC.B    4,2              DISP displays the contents of the 
+         DC.B    'DISP'           pseudo registers in TSK_T. 
+         DC.L    EX_DIS-COMTAB 
          DC.B    4,2               GO <address> starts program execution 
          DC.B    'GO  '            at <address> and loads regs from TSK_T 
          DC.L    GO-COMTAB 
@@ -1265,6 +1287,9 @@ COMTAB   DC.B     4,4              JUMP <address> causes execution to
          DC.B    4,3
          DC.B    'HELP'
          DC.L    HELP-COMTAB
+         DC.B    2,2
+         DC.B    'TV'
+         DC.L    TV-COMTAB
          DC.B    0,0
 * 
 ************************************************************************* 
@@ -1366,7 +1391,10 @@ PASS     DC.B     'PASS123',0
 UPROMPT  DC.B     'Enter Username: ',CR,LF,0
 PPROMPT  DC.B     'Enter Password: ',CR,LF,0
 WRONG    DC.B     'Incorrect',CR,LF,0
+RAMMSG   DC.B     'All Ram is Good!',0
+
          END RESET 
+
 
 
 *~Font name~Courier New~
