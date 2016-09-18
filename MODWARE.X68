@@ -1276,20 +1276,22 @@ REGNAME  DC.B     'D0D1D2D3D4D5D6D7'
          DC.B     'PC  ',0
 COMMANDS DC.B     CR,LF
          DC.B     'Available Commands:',CR,LF
-         DC.B     'LOAD',CR,LF
-         DC.B     'JUMP',CR,LF
-         DC.B     'MEMORY',CR,LF
-         DC.B     'DUMP',CR,LF
-         DC.B     'TRAN',CR,LF
-         DC.B     'NOBR',CR,LF
-         DC.B     'DISP',CR,LF
-         DC.B     'GO',CR,LF
-         DC.B     'BRGT',CR,LF
-         DC.B     'PLAN',CR,LF
-         DC.B     'KILL',CR,LF
-         DC.B     'GB',CR,LF
-         DC.B     'REG',CR,LF 
-         DC.B     'HELP',0
+         DC.B     'LOAD - Load an S-Record to User Data',CR,LF
+         DC.B     'JUMP - Jump to a specific location in memory. JUMP <address>',CR,LF
+         DC.B     'MEMORY - Examine value at address location. MEMORY <address>',CR,LF
+         DC.B     'DUMP - Sends S-records to the host and is preceded by <string>. DUMP <string>',CR,LF
+         DC.B     'TRAN - Enters transparent mode. Can be exited by ESC',CR,LF
+         DC.B     'NOBR - Removes breakpoint at address. If no address is given then all',CR,LF
+         DC.B     '       breakpoints are removed. NOBR <address>',CR,LF
+         DC.B     'DISP - Display values of pseudo registers in TSK_T',CR,LF
+         DC.B     'GO - Go to address and start execution. Get reg values from TSK_T. GO <address>',CR,LF
+         DC.B     'BRGT - Put a breakpoint in the BR table, but not in code',CR,LF
+         DC.B     'PLAN - Put the breakpoints in the BR table in code',CR,LF
+         DC.B     'KILL - Removed the breakpoints from the code',CR,LF
+         DC.B     'GB - Sets breakpoints and then calls GO. GB <address>',CR,LF
+         DC.B     'REG - Loads <value> into <reg> in TASK_T. Used to preset registers',CR,LF
+         DC.B     '      before GO or GB - REG <reg> <value>' 
+         DC.B     'HELP - List all commands',0
 ERMES1   DC.B     'Non-valid hexadecimal input  ',0 
 ERMES2   DC.B     'Invalid command  ',0 
 ERMES3   DC.B     'Loading error',0 
@@ -1298,6 +1300,7 @@ ERMES5   DC.B     'Breakpoint not active   ',0,0
 ERMES6   DC.B     'Uninitialized exception ',0,0 
 ERMES7   DC.B     ' Range error',0 
          END RESET 
+
 *~Font name~Courier New~
 *~Font size~10~
 *~Tab type~1~
