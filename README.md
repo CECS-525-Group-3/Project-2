@@ -11,9 +11,9 @@ The repository contains the modified firmware (MODWARE) that is to be ran on the
 
 ### Todo
 * Part 1
-.. * Remove unessecary code
+    * Remove unessecary code
 * Part 2
-.. * Login Subroutine
-.. * RAM Test Subroutine
+    * Login Subroutine
+    * RAM Test Subroutine
 * Part 3
 * Part 4
