@@ -13,7 +13,8 @@ The repository contains the modified firmware (MODWARE) that is to be ran on the
 * Part 1
     * Remove unessecary code
 * Part 2
-    * Login Subroutine - DONE
+    * Login Subroutine
+    * * Display password as asterisks
     * RAM Test Subroutine
 * Part 3
 * Part 4
