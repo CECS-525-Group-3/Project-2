@@ -408,8 +408,14 @@ HELP     LEA.L    COMMANDS(PC),A4  Point to the address of the command list
 *        pattern matches what is in the register. Bad memory locations are 
 *        reported.
 *             
-TV       LEA.L R_BEGIN,A1
-         LEA.L R_END,A2
+TV       MOVEM.L A0-A3/D0-D3,-(A7)  Save all working registers 
+         LEA.L   R_BEGIN,A0         Load start of RAM into A0
+         LEA.L   R_END,A1           Load end of RAM into A1
+         MOVE.L  (A0)+,D0           Save what is in the address to D0
+         MOVE.L  #$12345678,(A0)
+         MOVE.L  (A0),D1
+         CMP.L   #$12345678,D1
+         MOVEM.L (A7)+,A0-A3/D0-D3  Restore the working registers
          RTS
 * 
 ************************************************************************* 
