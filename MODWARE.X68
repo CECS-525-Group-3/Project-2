@@ -34,7 +34,7 @@ TSK_T    DS.W     37                Frame for D0-D7, A0-A6, USP, SSP, SW, PC
 BP_TAB   DS.W     24                Breakpoint table 
 FIRST    DS.B     512               DCB area 
 BUFFER   DS.B     256               256 bytes for I/O buffer
-SIMMODE  DC.B     1
+SIMMODE  DC.B     1                 1 for sim mode 0 for board
 * 
 ************************************************************************* 
 * 
@@ -59,6 +59,8 @@ RESET1   MOVE.B   #1,ECHO(A6)
 RESET2   CLR.B    U_CASE(A6)        Clear case conversion flag (UC<-LC) 
 	     BSR.L	  X_SET		        what change did i do here
          BSR.L    SET_DCB           Setup DCB table in RAM
+         ;LOGIN CODE
+         BSR.L    LOGIN         
          BSR.S    NEWLINE
          LEA.L    BANNER(PC),A4    
          BSR.S    PSTRING
@@ -417,6 +419,66 @@ TV       MOVEM.L A0-A3/D0-D3,-(A7)  Save all working registers
          CMP.L   #$12345678,D1
          MOVEM.L (A7)+,A0-A3/D0-D3  Restore the working registers
          RTS
+         
+LOGIN    LEA.L    UPROMPT,A4        Print User prompt
+         BSR      PSTRING
+         BSR      GETLINE           
+         LEA.L    LNBUFF(A6),A0     Loads input into A0
+         CLR      D0
+         MOVE.B   (A0),D0           Moves current byte of word to D0
+         LEA      USER,A1           Loads "ADMIN" into A1
+         MOVE.B   (A1),D2           Moves current byte of A1 into D2
+         MOVE.B   (A0)+,D0          Increment A0 by 1
+         MOVE.B   (A1)+,D2          Increment A1 by 1
+         CMP.B    D0,D2             Compares D0 and D2
+         BNE      LOGIN5            If not equal go to password request
+         
+LOGIN1   MOVE.B    (A0),D0          Move current byte of input to D0
+         MOVE.B    (A1),D2          Move current byte of "ADMIN" to D2
+         CMP.B     #0,D2
+         BEQ       LOGIN2
+         CMP.B     D0,D2            Compares the bytes
+         BNE       LOGIN5           If not equal branch to Incorrect message
+         MOVE.B    (A0)+,D0         Increment A0
+         MOVE.B    (A1)+,D2         Increment A1
+         BRA       LOGIN1           Loop
+
+         
+         
+LOGIN2   LEA.L    PPROMPT,A4        Print Password prompt
+         BSR      PSTRING
+         BSR      GETLINE           
+         LEA.L    LNBUFF(A6),A0     Loads input into A0
+         CLR      D0
+         MOVE.B   (A0),D0           Moves current byte of word to D0
+         LEA      PASS,A1           Loads "PASS123" into A1
+         MOVE.B   (A1),D2
+         MOVE.B   (A0)+,D0
+         MOVE.B   (A1)+,D2
+         CMP.B    D0,D2
+         BNE      LOGIN5            If not equal branch to Incorrect message
+
+LOGIN3   MOVE.B    (A0),D0
+         MOVE.B    (A1),D2
+         CMP.B     #0,D2            Check for null terminator
+         BEQ       LOGIN4         
+         CMP.B     D0,D2
+         BNE       LOGIN5           If not equal branch to Incorrect message
+         MOVE.B    (A0)+,D0
+         MOVE.B    (A1)+,D2
+         BRA       LOGIN3           Loop
+   
+LOGIN4   RTS   
+   
+LOGIN5   LEA.L    WRONG,A4
+         ADD.B    #1,D7
+         BSR      PSTRING
+         CMP.B    #3,D7             Check number of attempts
+         BNE      LOGIN             If less than 3 attempts try again
+
+         
+   
+         
 * 
 ************************************************************************* 
 * 
@@ -1330,8 +1392,16 @@ ERMES4   DC.B     'Table full  ',0,0
 ERMES5   DC.B     'Breakpoint not active   ',0,0 
 ERMES6   DC.B     'Uninitialized exception ',0,0 
 ERMES7   DC.B     ' Range error',0 
+USER     DC.B     'ADMIN',0
+PASS     DC.B     'PASS123',0
+UPROMPT  DC.B     'Enter Username: ',CR,LF,0
+PPROMPT  DC.B     'Enter Password: ',CR,LF,0
+WRONG    DC.B     'Incorrect',CR,LF,0
 RAMMSG   DC.B     'All Ram is Good!',0
+
          END RESET 
+
+
 
 *~Font name~Courier New~
 *~Font size~10~
