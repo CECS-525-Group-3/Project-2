@@ -410,16 +410,37 @@ HELP     LEA.L    COMMANDS(PC),A4  Point to the address of the command list
 *        pattern matches what is in the register. Bad memory locations are 
 *        reported.
 *             
-TV       MOVEM.L A0-A3/D0-D3,-(A7)  Save all working registers 
+TV       MOVEM.L A0-A3/D0-D4,-(A7)  Save all working registers 
          LEA.L   R_BEGIN,A0         Load start of RAM into A0
          LEA.L   R_END,A1           Load end of RAM into A1
-         MOVE.L  (A0)+,D0           Save what is in the address to D0
-         MOVE.L  #$12345678,(A0)
-         MOVE.L  (A0),D1
-         CMP.L   #$12345678,D1
-         MOVEM.L (A7)+,A0-A3/D0-D3  Restore the working registers
+TV1      MOVE.L  (A0),D1            Save what is in the address to D0
+         MOVE.L  #$12345678,(A0)    Test all bits of address
+         MOVE.L  (A0),D2            Move what was stored for test in A0 to D1
+         CMP.L   #$12345678,D2      Is what was stored what was loaded back?
+         BEQ     TV2                If the ram is bad then report it
+         CLR.L   D4                 Clear D3 for setting of flag
+         MOVE.B  #1,D4              Set the corrupt RAM flag
+         LEA.L   CORRUPT(PC),A4     Print the corrupt RAM string
+         BSR     PSTRING            Call PSTRING subroutine
+         MOVE.L  A0,D0              Load memory address in A0
+         BSR     OUT8X              Print the memory address
+         BSR     NEWLINE            Print Carriage Return and Line Feed
+TV2      MOVE.L  D1,(A0)+           Restore what was stored in memory
+         CMP     A0,A1              Is it end of ram?
+         BGT     TV1                Continue testing if not
+         CMP.B   #1,D4              Was there corrupt RAM?
+         BEQ     TV3                If so, dont print ALL RAM IS GOOD
+         LEA.L   RAMMSG(PC),A4      Print ALL RAM IS GOOD if so
+         BSR     PSTRING            Call PSTRING subroutine
+TV3      MOVEM.L (A7)+,A0-A3/D0-D4  Restore the working registers
          RTS
          
+         
+* 
+************************************************************************* 
+* 
+* LOGIN   Login subroutine
+*                   
 LOGIN    LEA.L    UPROMPT,A4        Print User prompt
          BSR      PSTRING
          BSR      GETLINE           
@@ -1398,8 +1419,10 @@ UPROMPT  DC.B     'Enter Username: ',CR,LF,0
 PPROMPT  DC.B     'Enter Password: ',CR,LF,0
 WRONG    DC.B     'Incorrect',CR,LF,0
 RAMMSG   DC.B     'All Ram is Good!',0
+CORRUPT  DC.B     'Corrupt RAM at - ',0
 
          END RESET 
+
 
 
 
