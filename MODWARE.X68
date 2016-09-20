@@ -1,7 +1,8 @@
 *        TSBUG2 - 68000 monitor - version of 05 January 2010 
 
 	 ORG      $0
-         DC.L     STACK,RESET
+         DC.L     STACK
+         DC.L     RESET
 *                                   Symbol equates 
 BS       EQU      $08               Back_space 
 CR       EQU      $0D               Carriage_return 
@@ -14,7 +15,9 @@ CTRL_A   EQU      $01               Control_A forces return to monitor
 STACK    EQU      $4400             Stack_pointer
 ACIA_1   EQU      $8001             Console ACIA control 
 ACIA_2   EQU      ACIA_1            Auxilary ACIA control 
-X_BASE   EQU      $4000             Start of exception vector table 
+X_BASE   EQU      $4000            Start of exception vector table 
+;X_BASE   EQU      $0                Start of exception vector table
+;X_END    EQU      $03FF             End of exception vector table
 TRAP_14  EQU      $4E4E             Code for TRAP #14 
 MAXCHR   EQU      64                Length of input line buffer  
 R_BEGIN  EQU      $4000             Address of beginning of RAM
@@ -57,10 +60,9 @@ RESET:   EQU      *
          BRA      RESET2
 RESET1   MOVE.B   #1,ECHO(A6)   
 RESET2   CLR.B    U_CASE(A6)        Clear case conversion flag (UC<-LC) 
-	     BSR.L	  X_SET		        what change did i do here
+	     BSR.L	  X_SET		        Setup excption vector table
          BSR.L    SET_DCB           Setup DCB table in RAM
-         ;LOGIN CODE
-         BSR.L    LOGIN         
+         ;BSR.L    LOGIN         
          BSR.S    NEWLINE
          LEA.L    BANNER(PC),A4    
          BSR.S    PSTRING
@@ -90,6 +92,7 @@ WARM:    CLR.L    D7                Warm entry point - clear error flag
          BSR      TIDY              Tidy up input buffer contents 
          BSR      EXECUTE           Interpret command 
          BRA      WARM              Repeat indefinitely 
+
 * 
 ************************************************************************* 
 * 
@@ -1405,6 +1408,7 @@ COMMANDS DC.B     CR,LF
          DC.B     'GB - Sets breakpoints and then calls GO. GB <address>',CR,LF
          DC.B     'REG - Loads <value> into <reg> in TASK_T. Used to preset registers',CR,LF
          DC.B     '      before GO or GB - REG <reg> <value>' 
+         DC.B     'TV - Run a RAM test subroutine, that tests all RAM locations'
          DC.B     'HELP - List all commands',0
 ERMES1   DC.B     'Non-valid hexadecimal input  ',0 
 ERMES2   DC.B     'Invalid command  ',0 
@@ -1422,6 +1426,7 @@ RAMMSG   DC.B     'All Ram is Good!',0
 CORRUPT  DC.B     'Corrupt RAM at - ',0
 
          END RESET 
+
 
 
 
