@@ -37,7 +37,7 @@ TSK_T    DS.W     37                Frame for D0-D7, A0-A6, USP, SSP, SW, PC
 BP_TAB   DS.W     24                Breakpoint table 
 FIRST    DS.B     512               DCB area 
 BUFFER   DS.B     256               256 bytes for I/O buffer
-SIMMODE  DC.B     1                 1 for sim mode 0 for board
+SIMMODE  DC.B     0                 1 for sim mode 0 for board
 * 
 ************************************************************************* 
 * 
@@ -62,7 +62,6 @@ RESET1   MOVE.B   #1,ECHO(A6)
 RESET2   CLR.B    U_CASE(A6)        Clear case conversion flag (UC<-LC) 
 	     BSR.L	  X_SET		        Setup excption vector table
          BSR.L    SET_DCB           Setup DCB table in RAM
-         ;BSR.L    LOGIN         
          BSR.S    NEWLINE
          LEA.L    BANNER(PC),A4    
          BSR.S    PSTRING
@@ -86,6 +85,8 @@ RESET2   CLR.B    U_CASE(A6)        Clear case conversion flag (UC<-LC)
          JSR      8(A0)             else continue 
 NO_EXT:  NOP                        Two NOPs to allow for a future 
          NOP                        call to an initialization routine 
+         ;BSR.S    NEWLINE
+         ;BSR      LOGIN   
 WARM:    CLR.L    D7                Warm entry point - clear error flag 
          BSR.S    NEWLINE           Print a newline 
          BSR.S    GETLINE           Get a command line 
@@ -442,66 +443,49 @@ TV3      MOVEM.L (A7)+,A0-A3/D0-D4  Restore the working registers
 * 
 ************************************************************************* 
 * 
-* LOGIN   Login subroutine
+* LOGIN   Login subroutine - the user name and password entered 
+*         by the user is stored in the line buffer pointed at by A6
+*         
 *                   
-LOGIN    LEA.L    UPROMPT,A4        Print User prompt
+LOGIN    MOVEM.L  A0-A2/D0-D3,-(A7) Store the working registers
+         MOVE.L   #0,D3
+LOGINC   CLR.L    D0
+         LEA.L    UPROMPT(PC),A4    Print User prompt
          BSR      PSTRING
+         ;BSR      GETLINE           
+         LEA.L    LNBUFF(A6),A0     Loads input into A0
+         LEA.L    USER(PC),A1       Load address of start of username to A1
+LOGIN1   MOVE.B   (A0)+,D0          Moves current byte of string to D0
+         MOVE.B   (A1)+,D1          Moves current byte of A1 into D1
+         CMP.B    #CR,D0
+         BEQ      LOGIN3
+         CMP.B    D1,D0
+         BNE      LOGIN5            User name didnt match go set incorrect flag
+         BRA      LOGIN1
+        
+LOGIN3   LEA.L    PPROMPT,A4        Print Password prompt
+         BSR      PSTRING
+         MOVE.B   #1,D5
          BSR      GETLINE           
          LEA.L    LNBUFF(A6),A0     Loads input into A0
-         CLR      D0
-         MOVE.B   (A0),D0           Moves current byte of word to D0
-         LEA      USER,A1           Loads "ADMIN" into A1
-         MOVE.B   (A1),D2           Moves current byte of A1 into D2
-         MOVE.B   (A0)+,D0          Increment A0 by 1
-         MOVE.B   (A1)+,D2          Increment A1 by 1
-         CMP.B    D0,D2             Compares D0 and D2
-         BNE      LOGIN5            If not equal go to password request
+         LEA.L    PASS,A1
+LOGIN4   MOVE.B   (A0)+,D0           Moves current byte of string to D0
+         MOVE.B   (A1)+,D1           Moves current byte of A1 into D1
+         CMP.B    #CR,D0
+         BEQ      LOGIN7
+         CMP.B    D1,D0
+         BNE      LOGIN5
+         BRA      LOGIN4
          
-LOGIN1   MOVE.B    (A0),D0          Move current byte of input to D0
-         MOVE.B    (A1),D2          Move current byte of "ADMIN" to D2
-         CMP.B     #0,D2
-         BEQ       LOGIN2
-         CMP.B     D0,D2            Compares the bytes
-         BNE       LOGIN5           If not equal branch to Incorrect message
-         MOVE.B    (A0)+,D0         Increment A0
-         MOVE.B    (A1)+,D2         Increment A1
-         BRA       LOGIN1           Loop
-
-         
-         
-LOGIN2   LEA.L    PPROMPT,A4        Print Password prompt
+LOGIN5   LEA.L    WRONG(PC),A4
          BSR      PSTRING
-         BSR      GETLINE           
-         LEA.L    LNBUFF(A6),A0     Loads input into A0
-         CLR      D0
-         MOVE.B   (A0),D0           Moves current byte of word to D0
-         LEA      PASS,A1           Loads "PASS123" into A1
-         MOVE.B   (A1),D2
-         MOVE.B   (A0)+,D0
-         MOVE.B   (A1)+,D2
-         CMP.B    D0,D2
-         BNE      LOGIN5            If not equal branch to Incorrect message
-
-LOGIN3   MOVE.B    (A0),D0
-         MOVE.B    (A1),D2
-         CMP.B     #0,D2            Check for null terminator
-         BEQ       LOGIN4         
-         CMP.B     D0,D2
-         BNE       LOGIN5           If not equal branch to Incorrect message
-         MOVE.B    (A0)+,D0
-         MOVE.B    (A1)+,D2
-         BRA       LOGIN3           Loop
-   
-LOGIN4   RTS   
-   
-LOGIN5   LEA.L    WRONG,A4
-         ADD.B    #1,D7
-         BSR      PSTRING
-         CMP.B    #3,D7             Check number of attempts
-         BNE      LOGIN             If less than 3 attempts try again
-
-         
-   
+         ADD.L    #1,D3
+         CMP.L    #3,D3
+         BLT      LOGINC     
+LOGIN6   NOP
+         BRA LOGIN6   
+LOGIN7   MOVEM.L (A7)+,A0-A2/D0-D3 
+         RTS                 
          
 * 
 ************************************************************************* 
@@ -842,7 +826,7 @@ GETCH3   MOVE.L  (A7)+,A0        Restore working register
 * 
 PUTCHAR  MOVE.L  A0,-(A7)        Save working register 
          MOVE.L  CN_OVEC(A6),A0  A0 points to name of console output 
-         BSR.S   IO_OPEN         Open console (Get address of DCB) 
+         BSR.S   IO_OPEN         Open console (Get address of DCB)
          BSR     IO_REQ          Perform output with DCB pointed at by A0 
          MOVE.L  (A7)+,A0        Restore working register 
          RTS 
@@ -1424,6 +1408,7 @@ PPROMPT  DC.B     'Enter Password: ',CR,LF,0
 WRONG    DC.B     'Incorrect',CR,LF,0
 RAMMSG   DC.B     'All Ram is Good!',0
 CORRUPT  DC.B     'Corrupt RAM at - ',0
+MASK     DC.B     '*'
 
          END RESET 
 
