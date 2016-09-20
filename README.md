@@ -13,7 +13,7 @@ The repository contains the modified firmware (MODWARE) that is to be ran on the
 * Part 1
     * Remove unessecary code
 * Part 2
-    * Login Subroutine - Does not run correctly on board
+    * Login Subroutine
     	* Display password as asterisks
     * ~~Help Command and Subroutine~~
     * ~~RAM Test Subroutine~~
