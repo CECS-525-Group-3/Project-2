@@ -37,7 +37,7 @@ TSK_T    DS.W     37                Frame for D0-D7, A0-A6, USP, SSP, SW, PC
 BP_TAB   DS.W     24                Breakpoint table 
 FIRST    DS.B     512               DCB area 
 BUFFER   DS.B     256               256 bytes for I/O buffer
-SIMMODE  DC.B     0                 1 for sim mode 0 for board
+SIMMODE  DC.B     1                 1 for sim mode 0 for board
 * 
 ************************************************************************* 
 * 
@@ -84,9 +84,10 @@ RESET2   CLR.B    U_CASE(A6)        Clear case conversion flag (UC<-LC)
          BNE.S    NO_EXT            call the subroutine at EXT_ROM+8 
          JSR      8(A0)             else continue 
 NO_EXT:  NOP                        Two NOPs to allow for a future 
-         NOP                        call to an initialization routine 
-         ;BSR.S    NEWLINE
-         ;BSR      LOGIN   
+         NOP
+         CLR.L    D7                        call to an initialization routine 
+         BSR.S    NEWLINE
+         BSR      LOGIN   
 WARM:    CLR.L    D7                Warm entry point - clear error flag 
          BSR.S    NEWLINE           Print a newline 
          BSR.S    GETLINE           Get a command line 
@@ -452,7 +453,7 @@ LOGIN    MOVEM.L  A0-A2/D0-D3,-(A7) Store the working registers
 LOGINC   CLR.L    D0
          LEA.L    UPROMPT(PC),A4    Print User prompt
          BSR      PSTRING
-         ;BSR      GETLINE           
+         BSR.L    GETLINE           
          LEA.L    LNBUFF(A6),A0     Loads input into A0
          LEA.L    USER(PC),A1       Load address of start of username to A1
 LOGIN1   MOVE.B   (A0)+,D0          Moves current byte of string to D0
@@ -1411,6 +1412,7 @@ CORRUPT  DC.B     'Corrupt RAM at - ',0
 MASK     DC.B     '*'
 
          END RESET 
+
 
 
 
