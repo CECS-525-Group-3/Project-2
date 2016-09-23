@@ -39,7 +39,7 @@ MAXCHR   EQU      64                Length of input line buffer
 R_BEGIN  EQU      $4000             Address of beginning of RAM
 R_END    EQU      $4FFF             Address of the end of RAM
 * 
-SIMMODE  DC.B     1                 1 for sim mode 0 for board
+SIMMODE  DC.B     0                 1 for sim mode 0 for board
 DATA     EQU      $4800             Data origin 
 LNBUFF   DS.B     MAXCHR            Input line buffer
 BUFFEND  EQU      LNBUFF+MAXCHR-1   End of line buffer 
@@ -866,7 +866,7 @@ GETCHAR  MOVE.L  A0,-(A7)        Save working register
          BTST    #6,D0           Test input for lower case 
          BEQ.S   GETCH2          If upper case then skip conversion 
          AND.B   #%11011111,D0   Else clear bit 5 for upper case conv
-         ADD.B   #1,ECHO(A6)
+         ;ADD.B   #1,ECHO(A6)
 GETCH2   TST.B   ECHO(A6)        Do we need to echo the input? 
          BNE.S   GETCH3          If ECHO not zero then no echo 
          BSR.S   PUTCHAR         Else echo the input 
@@ -1530,6 +1530,7 @@ MASK     DC.B     '*'
 *~Font size~10~
 *~Tab type~1~
 *~Tab size~4~
+
 *~Font name~Courier New~
 *~Font size~10~
 *~Tab type~1~
