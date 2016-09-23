@@ -28,7 +28,8 @@ LNBUFF   DS.B     MAXCHR            Input line buffer
 BUFFEND  EQU      LNBUFF+MAXCHR-1   End of line buffer 
 BUFFPT   DS.L     1                 Pointer to line buffer 
 PARAMTR  DS.L     1                 Last parameter from line buffer 
-ECHO     DS.B     1                 When clear this enable input echo 
+ECHO     DS.B     1                 When clear this enable input echo
+STAR     DS.B     1                 FLAG for password to *****
 U_CASE   DS.B     1                 Flag for upper case conversion 
 UTAB     DS.L     1                 Pointer to user mand table 
 CN_IVEC  DS.L     1                 Pointer to console input DCB 
@@ -156,6 +157,35 @@ GETLN4   CMP.L    A2,A3             Test for buffer overflow
          BNE      GETLN2            If buffer not full then continue 
 GETLN5   BSR      NEWLINE           Else move to next line and 
          BRA      GETLINE           repeat this routine 
+         
+*  GETPASS  inputs a string of characters into a line buffer 
+*           A3 points to next free entry in line buffer 
+*           A2 points to end of buffer 
+*           A1 points to start of buffer 
+*           D0 holds character to be stored 
+*
+GETPASS  LEA.L    LNBUFF(A6),A1     A1 points to start of password buffer 
+         LEA.L    (A1),A3           A3 points to start (initially) 
+         LEA.L    MAXCHR(A1),A2     A2 points to end of buffer 
+GETPS2   BSR      GETSTAR           Get a character 
+         CMP.B    #CTRL_A,D0        If control_A then reject this line 
+         BEQ.S    GETPS5            and get another line 
+         CMP.B    #BS,D0            If back_space then move back pointer 
+         BNE.S    GETPS3            Else skip past wind-back routine 
+         CMP.L    A1,A3             First check for empty buffer 
+         BEQ      GETPS2            If buffer empty then continue 
+         LEA      -1(A3),A3         Else decrement buffer pointer 
+         BRA      GETPS2            and continue with next character 
+GETPS3   MOVE.B   D0,(A3)+          Store character and update pointer 
+         CMP.B    #CR,D0            Test for command terminator 
+         BNE.S    GETPS4            If not CR then skip past exit 
+         BRA      NEWLINE           Else new line before next operation 
+GETPS4   CMP.L    A2,A3             Test for buffer overflow 
+         BNE      GETPS2            If buffer not full then continue 
+GETPS5   BSR      NEWLINE           Else move to next line and 
+         BRA      GETPASS           repeat this routine 
+
+         
 * 
 ************************************************************************* 
 * 
@@ -430,8 +460,8 @@ TV1      MOVE.L  (A0),D1            Save what is in the address to D0
          MOVE.L  A0,D0              Load memory address in A0
          BSR     OUT8X              Print the memory address
          BSR     NEWLINE            Print Carriage Return and Line Feed
-TV2      MOVE.L  D1,(A0)+           Restore what was stored in memory
-         CMP     A0,A1              Is it end of ram?
+TV2      MOVE.L  D1,(A0)+           Restoemory
+         CMP     A0,A1              Is it8 end of ram?
          BGT     TV1                Continue testing if not
          CMP.B   #1,D4              Was there corrupt RAM?
          BEQ     TV3                If so, dont print ALL RAM IS GOOD
@@ -463,11 +493,14 @@ LOGIN1   MOVE.B   (A0)+,D0          Moves current byte of string to D0
          CMP.B    D1,D0
          BNE      LOGIN5            User name didnt match go set incorrect flag
          BRA      LOGIN1
-        
 LOGIN3   LEA.L    PPROMPT,A4        Print Password prompt
          BSR      PSTRING
          MOVE.B   #1,D5
-         BSR      GETLINE           
+         MOVE.L   #1,D7
+         ADD.B   #1,ECHO(A6)
+         BSR      GETPASS
+         CLR.L    ECHO(A6)
+         MOVE.L   #0,D7
          LEA.L    LNBUFF(A6),A0     Loads input into A0
          LEA.L    PASS,A1
 LOGIN4   MOVE.B   (A0)+,D0           Moves current byte of string to D0
@@ -738,6 +771,8 @@ CON_I3   MOVEM.L D1,-(A7)        Save working registers
          MOVE.B  D1,D0
          MOVEM.L (A7)+,D1        Restore working registers 
          RTS 
+
+         
 * 
 ************************************************************************* 
 * 
@@ -804,21 +839,48 @@ AUX_OT1  BTST.B  #1,(A1)         Test for ready to transmit
 * 
 GETCHAR  MOVE.L  A0,-(A7)        Save working register 
          MOVE.L  CN_IVEC(A6),A0  A0 points to name of console DCB 
-         BSR.S   IO_OPEN         Open console (get DCB address in A0) 
-         BTST  #3,D7           D7(3) set if open error 
+         BSR   IO_OPEN         Open console (get DCB address in A0) 
+         BTST    #3,D7           D7(3) set if open error 
          BNE.S   GETCH3          If error then exit now 
          BSR     IO_REQ          Else execute I/O transaction 
          AND.B   #$7F,D0         Strip msb of input 
          TST.B   U_CASE(A6)      Test for upper -> lower case conversion 
          BNE.S   GETCH2          If flag not zero do not convert case 
-         BTST  #6,D0           Test input for lower case 
+         BTST    #6,D0           Test input for lower case 
          BEQ.S   GETCH2          If upper case then skip conversion 
-         AND.B   #%11011111,D0   Else clear bit 5 for upper case conv 
+         AND.B   #%11011111,D0   Else clear bit 5 for upper case conv
+         ADD.B   #1,ECHO(A6)
 GETCH2   TST.B   ECHO(A6)        Do we need to echo the input? 
          BNE.S   GETCH3          If ECHO not zero then no echo 
          BSR.S   PUTCHAR         Else echo the input 
 GETCH3   MOVE.L  (A7)+,A0        Restore working register 
          RTS                     and return 
+
+*
+************************************************************************* 
+* 
+*  GETSTAR gets a character from the console device 
+*  This is the main input routine and uses the device whose name  
+*  is stored in CN_IVEC. Changing this name redirects input. 
+* 
+GETSTAR  MOVE.L  A0,-(A7)        Save working register 
+         MOVE.L  CN_IVEC(A6),A0  A0 points to name of console DCB 
+         BSR.L   IO_OPEN         Open console (get DCB address in A0) 
+         BTST    #3,D7           D7(3) set if open error 
+         BNE.S   PASSCH3         If error then exit now 
+         BSR     IO_REQ          Else execute I/O transaction 
+         AND.B   #$7F,D0         Strip msb of input 
+         TST.B   U_CASE(A6)      Test for upper -> lower case conversion 
+         BNE.S   PASSCH2         If flag not zero do not convert case 
+         BTST    #6,D0           Test input for lower case 
+         BEQ.S   PASSCH2         If upper case then skip conversion 
+         AND.B   #%11011111,D0   Else clear bit 5 for upper case conv 
+PASSCH2  BSR.L   PUTSTAR         Echo the input    
+         BSR.L   PUTSTARs
+         
+PASSCH3  MOVE.L  (A7)+,A0        Restore working register 
+         RTS                     and return 
+
 * 
 ************************************************************************* 
 * 
@@ -827,10 +889,36 @@ GETCH3   MOVE.L  (A7)+,A0        Restore working register
 * 
 PUTCHAR  MOVE.L  A0,-(A7)        Save working register 
          MOVE.L  CN_OVEC(A6),A0  A0 points to name of console output 
-         BSR.S   IO_OPEN         Open console (Get address of DCB)
+         BSR.S   IO_OPEN         Open console (Get address of DCB) 
          BSR     IO_REQ          Perform output with DCB pointed at by A0 
          MOVE.L  (A7)+,A0        Restore working register 
-         RTS 
+         RTS
+
+* 
+************************************************************************* 
+* 
+*  PUTSTAR removes a character to the console device so password is not shown 
+*  The name of the output device is in CN_OVEC. 
+* 
+PUTSTAR  MOVE.W   D0,-(A7)			Save D0
+		 ;MOVE.B   #$2A,D0			Load * into D0
+		 move.B  #$8,D0
+		 BSR	  PUTCHAR			Print the character
+		 MOVE.W   (A7)+,D0			Restore D0
+		 RTS
+* 
+************************************************************************* 
+* 
+*  PUTSTARS adds a * to the console device for each character of password
+*  The name of the output device is in CN_OVEC. 
+* 		 
+PUTSTARS MOVE.W   D0,-(A7)			Save D0
+		 MOVE.B   #$2A,D0			Load * into D0
+		 ;move.B  #$8,D0
+		 BSR	  PUTCHAR			Print the character
+		 MOVE.W   (A7)+,D0			Restore D0
+		 RTS
+         
 * 
 ************************************************************************* 
 * 
@@ -1418,6 +1506,10 @@ MASK     DC.B     '*'
 
 
 
+*~Font name~Courier New~
+*~Font size~10~
+*~Tab type~1~
+*~Tab size~4~
 *~Font name~Courier New~
 *~Font size~10~
 *~Tab type~1~
