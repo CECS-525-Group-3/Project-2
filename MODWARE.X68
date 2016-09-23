@@ -1,8 +1,27 @@
 *        TSBUG2 - 68000 monitor - version of 05 January 2010 
 
-	 ORG      $0
-         DC.L     STACK
-         DC.L     RESET
+	     ORG      $0
+         DC.L     STACK,RESET,BUS_ER,ADD_ER,IL_ER,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         ORG      $1000             Monitor Origin
 *                                   Symbol equates 
 BS       EQU      $08               Back_space 
 CR       EQU      $0D               Carriage_return 
@@ -15,14 +34,12 @@ CTRL_A   EQU      $01               Control_A forces return to monitor
 STACK    EQU      $4400             Stack_pointer
 ACIA_1   EQU      $8001             Console ACIA control 
 ACIA_2   EQU      ACIA_1            Auxilary ACIA control 
-X_BASE   EQU      $4000            Start of exception vector table 
-;X_BASE   EQU      $0                Start of exception vector table
-;X_END    EQU      $03FF             End of exception vector table
 TRAP_14  EQU      $4E4E             Code for TRAP #14 
 MAXCHR   EQU      64                Length of input line buffer  
 R_BEGIN  EQU      $4000             Address of beginning of RAM
 R_END    EQU      $4FFF             Address of the end of RAM
 * 
+SIMMODE  DC.B     1                 1 for sim mode 0 for board
 DATA     EQU      $4800             Data origin 
 LNBUFF   DS.B     MAXCHR            Input line buffer
 BUFFEND  EQU      LNBUFF+MAXCHR-1   End of line buffer 
@@ -37,7 +54,7 @@ TSK_T    DS.W     37                Frame for D0-D7, A0-A6, USP, SSP, SW, PC
 BP_TAB   DS.W     24                Breakpoint table 
 FIRST    DS.B     512               DCB area 
 BUFFER   DS.B     256               256 bytes for I/O buffer
-SIMMODE  DC.B     1                 1 for sim mode 0 for board
+
 * 
 ************************************************************************* 
 * 
@@ -46,7 +63,8 @@ SIMMODE  DC.B     1                 1 for sim mode 0 for board
 *  it with a command in the user table or the built-in table COMTAB 
 *  All variables are specified with respect to A6 
 *
-         ORG      $1000             Monitor Origin
+         
+
 RESET:   EQU      *
          LEA.L    DATA,A6           A6 points to data area 
 	     MOVE.L	  A6,TSK_T+56(A6)   initialize A6 in the regster Frame
@@ -60,7 +78,6 @@ RESET:   EQU      *
          BRA      RESET2
 RESET1   MOVE.B   #1,ECHO(A6)   
 RESET2   CLR.B    U_CASE(A6)        Clear case conversion flag (UC<-LC) 
-	     BSR.L	  X_SET		        Setup excption vector table
          BSR.L    SET_DCB           Setup DCB table in RAM
          BSR.S    NEWLINE
          LEA.L    BANNER(PC),A4    
@@ -108,8 +125,8 @@ SETACIA  EQU      *                 Setup ACIA parameters
          MOVE.B   #$19,1(A0)        RTS* low, 8 bit, no parity, 1 stop) 
          RTS                        Return 
 * 
-NEWLINE  EQU      *                 Move cursor to start of newline 
-         MOVEM.L  A4,-(A7)          Save A4 
+NEWLINE  EQU      *                 Move cursor to start of newline
+         MOVEM.L  A4,-(A7)          Save A4
          LEA.L    CRLF(PC),A4       Point to CR/LF string 
          BSR.S    PSTRING           Print it 
          MOVEM.L  (A7)+,A4          Restore A4 
@@ -120,7 +137,7 @@ PSTRING  EQU      *                 Display the string pointed at by A4
 PS1      MOVE.B   (A4)+,D0          Get character to be printed 
          BEQ.S    PS2               If null then return 
          BSR      PUTCHAR           Else print it 
-         BRA      PS1               Continue 
+         BRA      PS1               Continue
 PS2      MOVE.L   (A7)+,D0          Restore D0 and exit 
          RTS 
 * 
@@ -882,12 +899,12 @@ OPEN4    MOVEM.L  (A7)+,A1-A3/D0-D4 Restore working registers
 *  Exception vector table initialization routine 
 *  All vectors not setup are loaded with uninitialized routine vector 
 * 
-X_SET   MOVE.W  #7,D0             Now clear the breakpoint table 
-        LEA.L   BP_TAB(A6),A0     Point to table 
-X_SET2  CLR.L   (A0)+             Clear an address entry 
-        CLR.W   (A0)+             Clear the corresponding data 
-        DBRA    D0,X_SET2         Repeat until all 8 cleared 
-        RTS 
+X_SET    MOVE.W  #7,D0             Now clear the breakpoint table 
+         LEA.L   BP_TAB(A6),A0     Point to table 
+         CLR.L   (A0)+             Clear an address entry 
+         CLR.W   (A0)+             Clear the corresponding data 
+         DBRA    D0,X_SET         Repeat until all 8 cleared 
+         RTS 
 * 
 ************************************************************************* 
 * 
@@ -1392,8 +1409,8 @@ COMMANDS DC.B     CR,LF
          DC.B     'KILL - Removed the breakpoints from the code',CR,LF
          DC.B     'GB - Sets breakpoints and then calls GO. GB <address>',CR,LF
          DC.B     'REG - Loads <value> into <reg> in TASK_T. Used to preset registers',CR,LF
-         DC.B     '      before GO or GB - REG <reg> <value>' 
-         DC.B     'TV - Run a RAM test subroutine, that tests all RAM locations'
+         DC.B     '      before GO or GB - REG <reg> <value>',CR,LF 
+         DC.B     'TV - Run a RAM test subroutine, that tests all RAM locations',CR,LF
          DC.B     'HELP - List all commands',0
 ERMES1   DC.B     'Non-valid hexadecimal input  ',0 
 ERMES2   DC.B     'Invalid command  ',0 
@@ -1412,6 +1429,9 @@ CORRUPT  DC.B     'Corrupt RAM at - ',0
 MASK     DC.B     '*'
 
          END RESET 
+
+
+
 
 
 
