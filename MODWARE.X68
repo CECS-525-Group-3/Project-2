@@ -1,10 +1,10 @@
 *        TSBUG2 - 68000 monitor - version of 05 January 2010 
 
 	     ORG      $0
-         DC.L     STACK,RESET,BUS_ER,ADD_ER,IL_ER,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     STACK,RESET,BUS_ER,ADD_ER,IL_ER,DIV_ER,X_UN,X_UN,PRIV_ER,X_UN,X_UN
          DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
-         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
-         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,TRAP_0,X_UN,X_UN,X_UN,X_UN
+         DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,TRAP_14,TRAP_15,X_UN,X_UN
          DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
          DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
          DC.L     X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
@@ -34,7 +34,6 @@ CTRL_A   EQU      $01               Control_A forces return to monitor
 STACK    EQU      $4400             Stack_pointer
 ACIA_1   EQU      $8001             Console ACIA control 
 ACIA_2   EQU      ACIA_1            Auxilary ACIA control 
-TRAP_14  EQU      $4E4E             Code for TRAP #14 
 MAXCHR   EQU      64                Length of input line buffer  
 R_BEGIN  EQU      $4000             Address of beginning of RAM
 R_END    EQU      $4FFF             Address of the end of RAM
@@ -996,76 +995,45 @@ X_SET    MOVE.W  #7,D0             Now clear the breakpoint table
 * 
 ************************************************************************* 
 * 
-TRAP_0  EQU     *                 User links to  TS2BUG via TRAP #0 
-FUNC0   CMP.B   #0,D1             D1 = 0 = Get character 
-        BNE.S   FUNC1           
-        BSR     GETCHAR 
-        RTE 
-FUNC1   CMP.B   #1,D1             D1 = 1 = Print character 
-        BNE.S   FUNC2 
-        BSR     PUTCHAR 
-        RTE 
-FUNC2   CMP.B   #2,D1             D1 = 2 = Newline 
-        BNE.S   FUNC3 
-        BSR     NEWLINE 
-        RTE 
-FUNC3   CMP.B   #3,D1             D1 = 3 = Get parameter from buffer 
-        BNE.S   FUNC4 
-        BSR     PARAM 
-        RTE 
-FUNC4   CMP.B   #4,D1             D1 = 4 = Print string pointed at by A4 
-        BNE.S   FUNC5 
-        BSR     PSTRING 
-        RTE 
-FUNC5   CMP.B   #5,D1             D1 = 5 = Get a hex character 
-        BNE.S   FUNC6 
-        BSR     HEX 
-        RTE 
-FUNC6   CMP.B   #6,D1             D1 = 6 = Get a hex byte 
-        BNE.S   FUNC7 
-        BSR     BYTE 
-        RTE 
-FUNC7   CMP.B   #7,D1             D1 = 7 = Get a word 
-        BNE.S   FUNC8 
-        BSR     WORD 
-        RTE 
-FUNC8   CMP.B   #8,D1             D1 = 8 = Get a longword 
-        BNE.S   FUNC9 
-        BSR     LONGWD 
-        RTE 
-FUNC9   CMP.B   #9,D1             D1 = 9 = Output hex byte 
-        BNE.S   FUNC10  
-        BSR     OUT2X 
-        RTE 
-FUNC10  CMP.B   #10,D1            D1 = 10 = Output hex word 
-        BNE.S   FUNC11 
-        BSR     OUT4X 
-        RTE 
-FUNC11  CMP.B   #11,D1            D1 = 11 = Output hex longword 
-        BNE.S   FUNC12 
-        BSR     OUT8X 
-        RTE 
-FUNC12  CMP.B   #12,D1            D1 = 12 = Print a space 
-        BNE.S   FUNC13 
-        BSR     PSPACE 
-        RTE 
-FUNC13  CMP.B   #13,D1            D1 = 13 = Get a line of text into 
-        BNE.S   FUNC14            the line buffer 
-        BSR     GETLINE 
-        RTE 
-FUNC14  CMP.B   #14,D1            D1 = 14 = Tidy up the line in the 
-        BNE.S   FUNC15            line buffer by removing leading 
-        BSR     TIDY              leading and multiple embeded spaces 
-        RTE 
-FUNC15  CMP.B   #15,D1            D1 = 15 = Execute the command in 
-        BNE.S   FUNC16            the line buffer 
-        BSR     EXECUTE 
-        RTE 
-FUNC16  CMP.B   #16,D1            D1 = 16 = Call RESTORE to transfer 
-        BNE.S   FUNC17            the registers in TSK_T to the 68000 
-        BSR     RESTORE           and therefore execute a program 
-        RTE 
-FUNC17  RTE 
+*  Exception vector table TRAP routines
+*  TRAP_0 - Does math from user programs
+*  TRAP_14 - Set breakpoint in user app
+*  TRAP_15 - Warm reset from user app
+* 
+TRAP_0   EQU    *
+         CMPI.B #1,D0
+         BNE    TRAP0_1
+         ADD.L  D2,D1
+         BRA    TRAP0_4
+TRAP0_1  CMPI.B #2,D0
+         BNE    TRAP0_2
+         SUB.L  D1,D2
+         MOVE.L D2,D1
+         BRA    TRAP0_4
+TRAP0_2  CMPI.B #3,D0
+         BNE    TRAP0_3
+         MULS   D2,D1
+         BRA    TRAP0_4
+TRAP0_3  CMPI.B #4,D0
+         BNE    TRAP0_4
+TRAP0_4  RTE
+         
+TRAP_14  EQU    *
+         MOVEM.L D0/A4,-(A7)       Save working registers
+         LEA.L   MES11(PC),A4      Load breakpoint heading into A4
+         BSR     HEADING           Display breakpoint heading
+         BSR     EX_DIS            Display the registers
+         LEA.L   CONTMSG(PC),A4    Load continue message into A4
+         BSR     PSTRING           Display the continue message
+TRP14_1  BSR     GETCHAR           Get a character from the screen
+         CMP.B   #CR,D0            Is it enter?
+         BNE     TRP14_1           If not, then wait for enter
+         MOVEM.L (A7)+,D0/A4       Restore working registers
+         RTE                       Return execution back to caller
+
+TRAP_15  EQU    *                  Trap function for warm reset
+         JMP    WARM               Jump back to command line entry point
+          
 * 
 ************************************************************************* 
 * 
@@ -1112,7 +1080,25 @@ EX_D1   MOVE.B  D5,D0             Put current register number in D0
 ************************************************************************* 
 * 
 *  Exception handling routines 
-* 
+*
+PRIV_ER EQU *
+        MOVE.L A4,-(A7)
+        LEA.L  MES14(PC),A4
+        BSR    HEADING
+        MOVE.L (A7)+,A4
+        BSR    GROUP2
+        BSR    EX_DIS
+        BRA    WARM
+*
+DIV_ER  EQU *
+        MOVE.L A4,-(A7)
+        LEA.L  MES13(PC),A4
+        BSR    HEADING
+        MOVE.L (A7)+,A4
+        BSR    GROUP2
+        BSR    EX_DIS
+        BRA    WARM  
+*
 IL_ER   EQU      *                Illegal instruction exception 
         MOVE.L  A4,-(A7)          Save A4 
         LEA.L   MES10(PC),A4      Point to heading 
@@ -1135,7 +1121,7 @@ ADD_ER  EQU     *                 Address error (group 1) exception
         BSR     HEADING           Print it 
         MOVE.L  (A7)+,A4          Restore A4 
         BRA.S   GROUP1            Deal with group 1 exception 
-* 
+*
 BRKPT   EQU     *                   Deal with breakpoint 
         MOVEM.L D0-D7/A0-A6,-(A7)   Save all registers 
         BSR     BR_CLR              Clear breakpoints in code 
@@ -1477,6 +1463,9 @@ MES9     DC.B     'Address error   ',0,0
 MES10    DC.B     'Illegal instruction ',0,0 
 MES11    DC.B     'Breakpoint  ',0,0 
 MES12    DC.B     'Trace  ',0 
+MES13    DC.B     'Divide by zero error',0
+MES14    DC.B     'Privilige Violation error',0
+CONTMSG  DC.B     'Press enter to continue',0
 REGNAME  DC.B     'D0D1D2D3D4D5D6D7' 
          DC.B     'A0A1A2A3A4A5A6A7' 
          DC.B     'SSSR' 
@@ -1530,6 +1519,7 @@ MASK     DC.B     '*'
 *~Font size~10~
 *~Tab type~1~
 *~Tab size~4~
+
 
 *~Font name~Courier New~
 *~Font size~10~
