@@ -39,14 +39,13 @@ MAXCHR   EQU      64                Length of input line buffer
 R_BEGIN  EQU      $4000             Address of beginning of RAM
 R_END    EQU      $4FFF             Address of the end of RAM
 * 
-SIMMODE  DC.B     0                 1 for sim mode 0 for board
+SIMMODE  DC.B     1                 1 for sim mode 0 for board
 DATA     EQU      $4800             Data origin 
 LNBUFF   DS.B     MAXCHR            Input line buffer
 BUFFEND  EQU      LNBUFF+MAXCHR-1   End of line buffer 
 BUFFPT   DS.L     1                 Pointer to line buffer 
 PARAMTR  DS.L     1                 Last parameter from line buffer 
 ECHO     DS.B     1                 When clear this enable input echo
-STAR     DS.B     1                 FLAG for password to *****
 U_CASE   DS.B     1                 Flag for upper case conversion 
 UTAB     DS.L     1                 Pointer to user mand table 
 CN_IVEC  DS.L     1                 Pointer to console input DCB 
@@ -477,8 +476,8 @@ TV1      MOVE.L  (A0),D1            Save what is in the address to D0
          MOVE.L  A0,D0              Load memory address in A0
          BSR     OUT8X              Print the memory address
          BSR     NEWLINE            Print Carriage Return and Line Feed
-TV2      MOVE.L  D1,(A0)+           Restoemory
-         CMP     A0,A1              Is it8 end of ram?
+TV2      MOVE.L  D1,(A0)+           Restore what was stored in memory
+         CMP     A0,A1              Is it end of ram?
          BGT     TV1                Continue testing if not
          CMP.B   #1,D4              Was there corrupt RAM?
          BEQ     TV3                If so, dont print ALL RAM IS GOOD
@@ -514,9 +513,7 @@ LOGIN3   LEA.L    PPROMPT,A4        Print Password prompt
          BSR      PSTRING
          MOVE.B   #1,D5
          MOVE.L   #1,D7
-         ADD.B   #1,ECHO(A6)
          BSR      GETPASS
-         CLR.L    ECHO(A6)
          MOVE.L   #0,D7
          LEA.L    LNBUFF(A6),A0     Loads input into A0
          LEA.L    PASS,A1
@@ -891,9 +888,17 @@ GETSTAR  MOVE.L  A0,-(A7)        Save working register
          BNE.S   PASSCH2         If flag not zero do not convert case 
          BTST    #6,D0           Test input for lower case 
          BEQ.S   PASSCH2         If upper case then skip conversion 
-         AND.B   #%11011111,D0   Else clear bit 5 for upper case conv 
-PASSCH2  BSR.L   PUTSTAR         Echo the input    
-         BSR.L   PUTSTARs
+         AND.B   #%11011111,D0   Else clear bit 5 for upper case conv
+
+PASSCH2  LEA.L    SIMMODE,A1
+         MOVE.B   (A1),D7
+
+         if.l d7 <eq> #1 then.s
+             BSR.L   PUTSTAR         Echo the input
+             BSR.L   PUTSTARS
+         else
+             BSR.L   PUTSTARS
+         endi
          
 PASSCH3  MOVE.L  (A7)+,A0        Restore working register 
          RTS                     and return 
@@ -1518,18 +1523,14 @@ MASK     DC.B     '*'
 
          END RESET 
 
-
-
-
-
-
-
-
-
 *~Font name~Courier New~
 *~Font size~10~
 *~Tab type~1~
 *~Tab size~4~
+
+
+
+
 
 *~Font name~Courier New~
 *~Font size~10~
