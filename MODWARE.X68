@@ -1005,23 +1005,25 @@ X_SET    MOVE.W  #7,D0             Now clear the breakpoint table
 *  TRAP_14 - Set breakpoint in user app
 *  TRAP_15 - Warm reset from user app
 * 
-TRAP_0   EQU    *
-         CMPI.B #1,D0
-         BNE    TRAP0_1
-         ADD.L  D2,D1
-         BRA    TRAP0_4
-TRAP0_1  CMPI.B #2,D0
-         BNE    TRAP0_2
-         SUB.L  D1,D2
-         MOVE.L D2,D1
-         BRA    TRAP0_4
-TRAP0_2  CMPI.B #3,D0
-         BNE    TRAP0_3
-         MULS   D2,D1
-         BRA    TRAP0_4
-TRAP0_3  CMPI.B #4,D0
-         BNE    TRAP0_4
-TRAP0_4  RTE
+TRAP_0   EQU    *                 Trap fucntion fro exception subroutine
+         CMPI.B #1,D0             Trap 0 with param of 1?
+         BNE    TRAP0_1           If not then branch
+         ADD.L  D2,D1             Add D1 and D2
+         BRA    TRAP0_4           Return execution back to caller
+TRAP0_1  CMPI.B #2,D0             Trap 0 with param of 2?
+         BNE    TRAP0_2           If not then branch
+         SUB.L  D1,D2             Subtract D1 from D2
+         MOVE.L D2,D1             Move D2 to D1 for return to calling program
+         BRA    TRAP0_4           Return execution back to caller
+TRAP0_2  CMPI.B #3,D0             Trap 0 with param of 3?
+         BNE    TRAP0_3           If not then branch
+         MULS   D2,D1             Multiply D2 by D1
+         BRA    TRAP0_4           Return execution back to caller
+TRAP0_3  CMPI.B #4,D0             Trap 0 with param of 4?
+         BNE    TRAP0_4           If not then go back to caller function
+         DIVS.W D1,D2
+         MOVE.W D2,D1
+TRAP0_4  RTE                      Return execution
          
 TRAP_14  EQU    *
          MOVEM.L D0/A4,-(A7)       Save working registers
@@ -1511,3 +1513,8 @@ CORRUPT  DC.B     'Corrupt RAM at - ',0
 MASK     DC.B     '*'
 
          END RESET 
+
+*~Font name~Courier New~
+*~Font size~10~
+*~Tab type~1~
+*~Tab size~4~
