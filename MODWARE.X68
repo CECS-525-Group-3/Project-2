@@ -1031,7 +1031,8 @@ TRAP0_2  CMPI.B #3,D0             Trap 0 with param of 3?
 TRAP0_3  CMPI.B #4,D0             Trap 0 with param of 4?
          BNE    TRAP0_4           If not then go back to caller function
          DIVS.W D1,D2
-         MOVE.W D2,D1
+         MOVE.L D2,D1
+         AND.L  #65535,D1
 TRAP0_4  RTE                      Return execution
          
 TRAP_14  EQU    *
@@ -1523,6 +1524,7 @@ MASK     DC.B     '*'
 DOWNLOAD DC.B     'Download complete...',CR,LF,0
 
          END RESET 
+
 
 *~Font name~Courier New~
 *~Font size~10~
