@@ -561,9 +561,9 @@ LOAD2    BSR      GETCHAR           Records from the host must begin
          BSR      GETCHAR           Get character after "S" 
          CMP.B    #'9',D0           Test for the two terminators S9/S8
          BEQ      TRASH             Take care of garbage
-         ;BEQ.S    LOAD3            If S9 record then exit else test 
          CMP.B    #'8',D0           for S8 terminator. Fall through to 
-         BNE.S    LOAD6             exit on S8 else continue search
+         BEQ      TRASH             Take care of garbage
+         BRA      LOAD6             exit on S8 else continue search
 LOAD3    EQU      *                 Exit point from LOAD 
          MOVE.L   (A7)+,CN_IVEC(A6) Clean up by restoring input device 
          MOVE.L   (A7)+,CN_OVEC(A6) and output device name 
@@ -618,8 +618,9 @@ LOAD8    BSR     BYTE               Get a byte
          RTS                        and return
          
 TRASH    BSR     BYTE               Get a byte
-         CMP.B   #0,D3              Check if bytes left is 0
          SUB.B   #1,D2              Subtract 1 from bytes left
+         ;CMP.B   #0,D3              Check if bytes left is 0
+         ;BNE     TRASH
          LEA.L   DOWNLOAD(PC),A4    If at 0 print goodbye message
          BSR     PSTRING            Print it 
          BRA     LOAD3
@@ -1524,6 +1525,7 @@ MASK     DC.B     '*'
 DOWNLOAD DC.B     'Download complete...',CR,LF,0
 
          END RESET 
+
 
 
 *~Font name~Courier New~
