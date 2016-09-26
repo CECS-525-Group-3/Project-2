@@ -38,7 +38,7 @@ MAXCHR   EQU      64                Length of input line buffer
 R_BEGIN  EQU      $4000             Address of beginning of RAM
 R_END    EQU      $4FFF             Address of the end of RAM
 * 
-SIMMODE  DC.B     1                 1 for sim mode 0 for board
+SIMMODE  DC.B     0                 1 for sim mode 0 for board
 DATA     EQU      $4800             Data origin 
 LNBUFF   DS.B     MAXCHR            Input line buffer
 BUFFEND  EQU      LNBUFF+MAXCHR-1   End of line buffer 
@@ -559,19 +559,20 @@ LOAD2    BSR      GETCHAR           Records from the host must begin
          CMP.B    #'S',D0           with S1/S2 (data) or S9/S8 (term) 
          BNE.S    LOAD2             Repeat GETCHAR until char = "S" 
          BSR      GETCHAR           Get character after "S" 
-         CMP.B    #'9',D0           Test for the two terminators S9/S8 
-         BEQ.S    LOAD3             If S9 record then exit else test 
+         CMP.B    #'9',D0           Test for the two terminators S9/S8
+         BEQ      TRASH             Take care of garbage
+         ;BEQ.S    LOAD3            If S9 record then exit else test 
          CMP.B    #'8',D0           for S8 terminator. Fall through to 
-         BNE.S    LOAD6             exit on S8 else continue search 
+         BNE.S    LOAD6             exit on S8 else continue search
 LOAD3    EQU      *                 Exit point from LOAD 
          MOVE.L   (A7)+,CN_IVEC(A6) Clean up by restoring input device 
          MOVE.L   (A7)+,CN_OVEC(A6) and output device name 
          CLR.B    ECHO(A6)          Restore input character echo 
-         BTST   #0,D7             Test for input errors 
+         BTST     #0,D7             Test for input errors 
          BEQ.S    LOAD4             If no I/P error then look at checksum 
          LEA.L    ERMES1(PC),A4     Else point to error message 
          BSR      PSTRING           Print it 
-LOAD4    BTST   #3,D7             Test for checksum error 
+LOAD4    BTST     #3,D7             Test for checksum error 
          BEQ.S    LOAD5             If clear then exit 
          LEA.L    ERMES3(PC),A4     Else point to error message 
          BSR      PSTRING           Print it and return 
@@ -596,7 +597,7 @@ LOAD6    CMP.B    #'1',D0           Test for S1 record
 LOAD6A   CLR.B    D3                S1 record found - clear checksum 
          BSR.S    LOAD8             Get byte and update checksum 
          SUB.B    #3,D0             Subtract 3 from record length 
-         MOVE.B   D0,D2             Save byte count in D2 
+         MOVE.B   D0,D2             Save byte count in D2
          CLR.L    D0                Clear address accumulator 
          BSR.S    LOAD8             Get MS byte of load address 
          ASL.L    #8,D0             Move it to MS position 
@@ -614,7 +615,15 @@ LOAD7    BSR.S    LOAD8             Get byte of data for loading
 * 
 LOAD8    BSR     BYTE               Get a byte 
          ADD.B   D0,D3              Update checksum 
-         RTS                         and return 
+         RTS                        and return
+         
+TRASH    BSR     BYTE               Get a byte
+         CMP.B   #0,D3              Check if bytes left is 0
+         SUB.B   #1,D2              Subtract 1 from bytes left
+         LEA.L   DOWNLOAD(PC),A4    If at 0 print goodbye message
+         BSR     PSTRING            Print it 
+         BRA     LOAD3
+         RTS
 * 
 ************************************************************************* 
 * 
@@ -1509,5 +1518,11 @@ WRONG    DC.B     'Incorrect',CR,LF,0
 RAMMSG   DC.B     'All Ram is Good!',0
 CORRUPT  DC.B     'Corrupt RAM at - ',0
 MASK     DC.B     '*'
+DOWNLOAD DC.B     'Download complete...',CR,LF,0
 
          END RESET 
+
+*~Font name~Courier New~
+*~Font size~10~
+*~Tab type~1~
+*~Tab size~4~
